@@ -144,6 +144,25 @@ function endUserUpdate(userId: number) {
   updatingUserIds.value = next
 }
 
+function userFromChangeEvent(event: Event): OpdsUser | undefined {
+  const userId = Number((event.currentTarget as HTMLElement).dataset.userId)
+  if (!Number.isInteger(userId) || userId <= 0) return undefined
+  return opdsUsers.value.find((user) => user.id === userId)
+}
+
+async function handleSortOrderChange(event: Event) {
+  const user = userFromChangeEvent(event)
+  if (!user) return
+  const sortOrder = (event.currentTarget as HTMLSelectElement).value as OpdsSortOrder
+  await updateSortOrder(user, sortOrder)
+}
+
+async function handlePageSizeChange(event: Event) {
+  const user = userFromChangeEvent(event)
+  if (!user) return
+  await updatePageSize(user, event)
+}
+
 async function updateSortOrder(user: OpdsUser, sortOrder: OpdsSortOrder) {
   if (!beginUserUpdate(user.id)) return
 
@@ -173,7 +192,7 @@ async function updateSortOrder(user: OpdsUser, sortOrder: OpdsSortOrder) {
  * anything the endpoint would reject is put back rather than sent for a 400.
  */
 function pageSizeFrom(event: Event): number | null {
-  const value = Number((event.target as HTMLInputElement).value)
+  const value = Number((event.currentTarget as HTMLInputElement).value)
   return Number.isInteger(value) && value >= OPDS_MIN_PAGE_SIZE && value <= OPDS_MAX_PAGE_SIZE ? value : null
 }
 
@@ -182,7 +201,7 @@ function handleCreatePageSize(event: Event) {
 }
 
 async function updatePageSize(user: OpdsUser, event: Event) {
-  const input = event.target as HTMLInputElement
+  const input = event.currentTarget as HTMLInputElement
   const pageSize = pageSizeFrom(event)
   if (pageSize === null) {
     input.value = String(user.pageSize)
@@ -431,6 +450,7 @@ function cancelDelete() {
           <div class="flex items-center gap-2">
             <input
               :id="`opds-page-size-${user.id}`"
+              :data-user-id="user.id"
               :value="user.pageSize"
               :aria-label="`${t('settings.reader.opds.pageSize')}: ${user.username}`"
               :disabled="updatingUserIds.has(user.id)"
@@ -440,13 +460,14 @@ function cancelDelete() {
               inputmode="numeric"
               step="1"
               class="input-field text-xs h-9 md:h-auto py-1 w-20"
-              @change="updatePageSize(user, $event)"
+              @change="handlePageSizeChange"
             />
             <select
+              :data-user-id="user.id"
               :value="user.sortOrder"
               :disabled="updatingUserIds.has(user.id)"
               class="select-field text-xs h-9 md:h-auto py-1 w-full md:w-auto"
-              @change="updateSortOrder(user, ($event.target as HTMLSelectElement).value as OpdsSortOrder)"
+              @change="handleSortOrderChange"
             >
               <option v-for="opt in sortOrderOptions" :key="opt.value" :value="opt.value">
                 {{ opt.label }}

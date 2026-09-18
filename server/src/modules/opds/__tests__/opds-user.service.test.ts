@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 vi.mock('bcryptjs', () => ({
@@ -100,13 +100,13 @@ describe('OpdsUserService', () => {
       await expect(service.create(5, { username: 'duplicate', password: 'password123' })).rejects.toThrow(ConflictException);
     });
 
-    it('rethrows non-unique-violation errors', async () => {
+    it('wraps non-unique-violation errors', async () => {
       const genericError = new Error('connection lost');
       mockValues.mockReturnValue({
         returning: vi.fn().mockRejectedValue(genericError),
       });
 
-      await expect(service.create(5, { username: 'user', password: 'password123' })).rejects.toThrow('connection lost');
+      await expect(service.create(5, { username: 'user', password: 'password123' })).rejects.toThrow(InternalServerErrorException);
     });
   });
 
@@ -133,6 +133,13 @@ describe('OpdsUserService', () => {
       mockReturning.mockResolvedValue([]);
 
       await expect(service.update(5, 10, { sortOrder: 'title_asc' })).rejects.toThrow(NotFoundException);
+    });
+
+    it('wraps unexpected update errors', async () => {
+      db.query.opdsUsers.findFirst.mockResolvedValue({ id: 10, userId: 5 });
+      mockReturning.mockRejectedValue(new Error('connection lost'));
+
+      await expect(service.update(5, 10, { pageSize: 15 })).rejects.toThrow(InternalServerErrorException);
     });
 
     it('updates page size without changing sort order', async () => {

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
   Inject,
   Injectable,
   InternalServerErrorException,
@@ -83,7 +84,7 @@ export class OpdsUserService {
       if (!created) throw new InternalServerErrorException('Failed to create OPDS user');
 
       this.logger.log(
-        `[opds.user.create] [end] userId=${userId} opdsUserId=${created.id} sortOrder="${sanitizeLogValue(created.sortOrder)}" pageSize=${created.pageSize} durationMs=${Date.now() - startedAt} - OPDS user creation completed`,
+        `[opds.user.create] [end] userId=${userId} opdsUserId=${created.id} sortOrder="${sanitizeLogValue(created.sortOrder)}" pageSize=${created.pageSize} durationMs=${Date.now() - startedAt} outcome=created - OPDS user creation completed`,
       );
       return created;
     } catch (err: unknown) {
@@ -95,7 +96,8 @@ export class OpdsUserService {
       if (isUniqueViolation(err)) {
         throw new ConflictException('An OPDS user with this username already exists');
       }
-      throw err;
+      if (err instanceof HttpException) throw err;
+      throw new InternalServerErrorException('Failed to create OPDS user');
     }
   }
 
@@ -131,7 +133,7 @@ export class OpdsUserService {
       if (!updated) throw new NotFoundException('OPDS user not found');
 
       this.logger.log(
-        `[opds.user.update] [end] userId=${userId} opdsUserId=${updated.id} sortOrder="${sanitizeLogValue(updated.sortOrder)}" pageSize=${updated.pageSize} durationMs=${Date.now() - startedAt} - OPDS user update completed`,
+        `[opds.user.update] [end] userId=${userId} opdsUserId=${updated.id} sortOrder="${sanitizeLogValue(updated.sortOrder)}" pageSize=${updated.pageSize} durationMs=${Date.now() - startedAt} outcome=updated - OPDS user update completed`,
       );
       return updated;
     } catch (err: unknown) {
@@ -140,7 +142,8 @@ export class OpdsUserService {
       this.logger.error(
         `[opds.user.update] [fail] userId=${userId} opdsUserId=${opdsUserId} sortOrder="${sanitizeLogValue(requestedSortOrder)}" pageSize=${requestedPageSize} durationMs=${Date.now() - startedAt} errorClass=${sanitizeLogValue(errorClass)} error="${sanitizeLogValue(errorMessage)}" - OPDS user update failed`,
       );
-      throw err;
+      if (err instanceof HttpException) throw err;
+      throw new InternalServerErrorException('Failed to update OPDS user');
     }
   }
 
